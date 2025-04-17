@@ -17,6 +17,18 @@ STORAGE_CHANNEL = -1002397387402  # First channel
 POST_CHANNEL = -1002176704916     # Second channel
 DUMP_CHANNEL = -1002397387402     # Using first channel as dump
 
+# Force Subscribe Channel
+FORCE_SUB_CHANNEL = "@athithan_220"
+
+# Welcome Image and Messages
+WELCOME_IMAGE = "assets/welcome.jpg"  # Local file path
+WELCOME_TEXT = """
+Welcome to FileStore Bot🌟
+Made by @athithan_220
+
+Please join our channel to use this bot!
+"""
+
 # Debug mode
 DEBUG = True
 
