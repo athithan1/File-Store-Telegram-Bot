@@ -23,7 +23,7 @@ def load_admin_config():
     default_config = {
         "admins": DEFAULT_ADMIN,
         "force_sub_channel": "@athithan_220",
-        "storage_channel": "-1001986592737",
+        "storage_channel": "-1002397387402",  # Updated to match the correct ID format
         "welcome_image": "welcome_image.jpg",
         "welcome_caption": "👋 Hello {user_mention}!\n\nWelcome to Ragnar File Store Bot 📁\nJust send me any media or file, and I'll give you a permanent download link 🔗\n\n⚠️ Note: You must join our channel to use this bot!\n👉 @athithan_220\n\nAll Rights Reserved © @ragnarlothbrockV",
         "bulk_mode": False,
@@ -458,7 +458,7 @@ async def handle_set_storage(client: Client, message: Message):
         if not message.text:
             await message.reply(
                 "❌ Please send the storage channel ID!\n\n"
-                "Note: Make sure the bot is admin in the channel."
+                "Note: Make sure the bot is admin in the channel with post permission."
             )
             return
             
@@ -468,29 +468,40 @@ async def handle_set_storage(client: Client, message: Message):
         try:
             chat = await client.get_chat(channel_id)
             bot_member = await client.get_chat_member(chat.id, "me")
+            
+            # Check permissions
             if not bot_member.can_post_messages:
                 await message.reply("❌ Bot needs to be admin in the channel with post permission!")
                 return
+                
+            # Get the actual numeric ID
+            numeric_id = chat.id
+            
+            # Save the ID as a string
+            config = load_admin_config()
+            config["storage_channel"] = str(numeric_id)
+            
+            if save_admin_config(config):
+                await message.reply(
+                    f"✅ Storage channel updated successfully!\n\n"
+                    f"Channel: {chat.title}\n"
+                    f"ID: {numeric_id}\n\n"
+                    f"The bot has proper admin rights in this channel."
+                )
+            else:
+                await message.reply("❌ Failed to save configuration!")
+                
         except Exception as e:
+            error_message = str(e)
             await message.reply(
-                "❌ Invalid channel ID or bot is not a member!\n\n"
-                "Make sure:\n"
-                "1. Channel ID is correct\n"
-                "2. Bot is added to channel\n"
-                "3. Bot is admin in channel"
+                f"❌ Invalid channel ID or bot is not a member!\n\n"
+                f"Error: {error_message}\n\n"
+                f"Make sure:\n"
+                f"1. Channel ID is correct format: -100xxxxxxxxxx\n"
+                f"2. Bot is added to channel\n"
+                f"3. Bot is admin in channel with post permission"
             )
             return
-            
-        config = load_admin_config()
-        config["storage_channel"] = str(chat.id)
-        if save_admin_config(config):
-            await message.reply(
-                f"✅ Storage channel updated successfully!\n\n"
-                f"Channel: {chat.title}\n"
-                f"ID: {chat.id}"
-            )
-        else:
-            await message.reply("❌ Failed to save configuration!")
             
     except Exception as e:
         print(f"Error in handle_set_storage: {str(e)}")
@@ -520,15 +531,17 @@ async def handle_set_force_sub(client: Client, message: Message):
                 return
         except Exception as e:
             await message.reply(
-                "❌ Invalid channel or bot is not a member!\n\n"
-                "Make sure:\n"
-                "1. Channel username/ID is correct\n"
-                "2. Bot is added to channel\n"
-                "3. Bot is admin in channel"
+                f"❌ Invalid channel or bot is not a member!\n\n"
+                f"Error: {str(e)}\n\n"
+                f"Make sure:\n"
+                f"1. Channel username/ID is correct\n"
+                f"2. Bot is added to channel\n"
+                f"3. Bot is admin in channel"
             )
             return
             
         config = load_admin_config()
+        # Always save ID as string to prevent issues
         config["force_sub_channel"] = f"@{chat.username}" if chat.username else str(chat.id)
         if save_admin_config(config):
             await message.reply(
