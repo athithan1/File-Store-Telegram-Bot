@@ -1,8 +1,10 @@
 {
-    "admins": [
-        144590326
-    ],
+    "admins": 7424730333,
     "force_sub_channel": "@athithan_220",
-    "welcome_image": "photo_2025-04-17_14-20-26.jpg",
-    "welcome_caption": "\n\ud83d\udc4b Hello {user_mention}!\n\nWelcome to **Ragnar File Store Bot** \ud83d\udcc1  \nJust send me any media or file, and I'll give you a permanent download link \ud83d\udd17\n\n\u26a0\ufe0f Note: You must join our channel to use this bot!\n\ud83d\udc49 @athithan_220\n\nAll Rights Reserved \u00a9 @ragnarlothbrockV\n"
+    "welcome_image": "welcome_image.jpg",
+    "welcome_caption": "\ud83d\udc4b Hello Butcher!\n\nWelcome to Ragnar File Store Bot \ud83d\udcc1  \nJust send me any media or file, and I'll give you a permanent download link \ud83d\udd17\n\n\u26a0\ufe0f Note: You must join our channel to use this bot!\n\ud83d\udc49 @athithan_220 \u2705\n\nAll Rights Reserved \u00a9 @ragnarlothbrockV",
+    "bulk_mode": false,
+    "auto_accept": false,
+    "maintenance_mode": false,
+    "max_file_size": 4000
 }
