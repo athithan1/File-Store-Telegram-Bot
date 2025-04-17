@@ -21,12 +21,24 @@ DUMP_CHANNEL = -1002397387402     # Using storage channel as dump
 FORCE_SUB_CHANNEL = "@athithan_220"
 
 # Welcome Image and Messages
-WELCOME_IMAGE = "photo_2025-04-17_14-20-26.jpg"  # Updated to your image path
+WELCOME_IMAGE = "photo_2025-04-17_14-20-26.jpg"
 WELCOME_TEXT = """
-Welcome to FileStore Bot🌟
-Made by @athithan_220
+👋 Hello {user_mention}!
 
-Please join our channel to use this bot!
+Welcome to **Ragnar File Store Bot** 📁  
+Just send me any media or file, and I'll give you a permanent download link 🔗
+
+⚠️ Note: You must join our channel to use this bot!
+👉 @athithan_220
+
+All Rights Reserved © @ragnarlothbrockV
+"""
+
+# File upload success message
+FILE_UPLOAD_TEXT = """
+🎬 File Uploaded Successfully
+📥 All Rights Reserved @ragnarlothbrockV
+🔗 Join us 👉 @athithan_220
 """
 
 # Debug mode

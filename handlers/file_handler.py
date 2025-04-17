@@ -1,6 +1,6 @@
 from pyrogram.types import Message
 from pyrogram.errors import ChannelInvalid, PeerIdInvalid, ChatAdminRequired, RPCError
-from config import STORAGE_CHANNEL, POST_CHANNEL, DEBUG
+from config import STORAGE_CHANNEL, POST_CHANNEL, DEBUG, FILE_UPLOAD_TEXT
 from services.link_generator import encode_file_id
 
 async def handle_file(client, message: Message):
@@ -37,11 +37,10 @@ async def handle_file(client, message: Message):
         bot_info = await client.get_me()
         share_link = f"https://t.me/{bot_info.username}?start={encoded_id}"
         
-        # Send link to user
+        # Send success message with link
         await message.reply(
-            f"✅ File stored successfully!\n\n"
-            f"📎 Share Link: {share_link}\n\n"
-            f"📩 Click the link to receive the file"
+            f"{FILE_UPLOAD_TEXT}\n\n"
+            f"📎 Share Link: {share_link}"
         )
         
     except ChatAdminRequired:
