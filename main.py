@@ -10,9 +10,8 @@ from handlers.auth import check_subscription, get_subscribe_markup
 from services.link_generator import decode_file_id
 import os
 
-# Use channel ID instead of username
-FORCE_CHANNEL = "-1002117430247"  # Your channel ID from the logs
-FORCE_CHANNEL_USERNAME = "athithan_220"  # Keep username for invite link
+# Channel settings
+FORCE_CHANNEL = "@athithan_220"
 START_IMAGE = "photo_2025-04-17_14-20-26.jpg"
 
 print(f"Initializing bot with API_ID: {API_ID}")
@@ -29,35 +28,25 @@ user_requests = {}
 async def check_subscription(client, user_id):
     try:
         print(f"Checking subscription for user {user_id} in channel {FORCE_CHANNEL}")
-        member = await client.get_chat_member(chat_id=FORCE_CHANNEL, user_id=user_id)
+        member = await client.get_chat_member(FORCE_CHANNEL, user_id)
         print(f"Member status: {member.status}")
         
-        # Check for all possible member statuses
-        allowed_status = ["member", "administrator", "creator", "ChatMemberStatus.MEMBER", 
-                         "ChatMemberStatus.ADMINISTRATOR", "ChatMemberStatus.OWNER"]
-        
-        member_status_str = str(member.status)
-        print(f"Member status string: {member_status_str}")
-        
-        if member_status_str in allowed_status:
+        if str(member.status) in ["member", "administrator", "creator", 
+                                 "ChatMemberStatus.MEMBER", 
+                                 "ChatMemberStatus.ADMINISTRATOR", 
+                                 "ChatMemberStatus.OWNER"]:
             print(f"User {user_id} is subscribed")
             return True
         else:
-            print(f"User {user_id} is not subscribed (status: {member_status_str})")
+            print(f"User {user_id} is not subscribed (status: {member.status})")
             return False
             
     except Exception as e:
         print(f"Error checking subscription for user {user_id}: {str(e)}")
-        try:
-            chat = await client.get_chat(FORCE_CHANNEL)
-            print(f"Channel info: {chat.title} (id: {chat.id})")
-        except Exception as chat_e:
-            print(f"Error getting channel info: {str(chat_e)}")
         return False
 
 async def send_requested_file(client, chat_id, file_id):
     try:
-        # Forward the file from storage to user
         await client.copy_message(
             chat_id=chat_id,
             from_chat_id=STORAGE_CHANNEL,
@@ -83,21 +72,18 @@ async def start_command(client, message: Message):
         
         if has_file_request:
             file_id = decode_file_id(command_parts[1])
-            # Store the file request for this user
             user_requests[user_id] = file_id
         
         if not is_subscribed:
             buttons = [[
-                InlineKeyboardButton("Join Channel 🔔", url=f"https://t.me/{FORCE_CHANNEL_USERNAME}"),
+                InlineKeyboardButton("Join Channel 🔔", url=f"https://t.me/{FORCE_CHANNEL.replace('@', '')}"),
                 InlineKeyboardButton("Try Again 🔄", callback_data="check_sub")
             ]]
-            caption = f"👋 Welcome! Please join our channel @{FORCE_CHANNEL_USERNAME} to access the {'requested file' if has_file_request else 'bot'}!"
+            caption = f"👋 Welcome! Please join our channel {FORCE_CHANNEL} to access the {'requested file' if has_file_request else 'bot'}!"
         else:
             if has_file_request:
-                # If user is subscribed and has a file request, send the file
                 success = await send_requested_file(client, message.chat.id, file_id)
                 if success:
-                    # Clear the request after successful sending
                     user_requests.pop(user_id, None)
                     return
             
@@ -106,7 +92,6 @@ async def start_command(client, message: Message):
         
         reply_markup = InlineKeyboardMarkup(buttons)
         
-        # Send welcome image with caption
         if os.path.exists(START_IMAGE):
             await client.send_photo(
                 chat_id=message.chat.id,
@@ -142,12 +127,10 @@ async def callback_check_sub(client, callback_query):
             await callback_query.message.edit_reply_markup(InlineKeyboardMarkup(buttons))
             await callback_query.answer("✅ Thank you for joining! You can use the bot now.", show_alert=True)
             
-            # Check if user had a pending file request
             if user_id in user_requests:
                 file_id = user_requests[user_id]
                 success = await send_requested_file(client, callback_query.message.chat.id, file_id)
                 if success:
-                    # Clear the request after successful sending
                     user_requests.pop(user_id)
         else:
             await callback_query.answer("⚠️ Please join the channel first!", show_alert=True)
@@ -163,17 +146,9 @@ async def main():
     async with app:
         print("Bot is starting...")
         try:
-            # Verify channel access
-            storage = await app.get_chat(STORAGE_CHANNEL)
-            post = await app.get_chat(POST_CHANNEL)  # Now POST_CHANNEL is defined
-            print(f"Bot started successfully!")
-            print(f"Storage channel: {storage.title}")
-            print(f"Post channel: {post.title}")
+            print("Bot started successfully!")
             print("Bot is running... Press Ctrl+C to stop")
-            
-            # Keep the bot running
             await idle()
-            
         except Exception as e:
             print(f"Error during startup: {str(e)}")
             raise e

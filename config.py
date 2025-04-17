@@ -12,16 +12,16 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "7150003784:AAEWiVw70N0DFNUgyM-B-b-mjCZrNwN-t
 if not all([API_ID, API_HASH, BOT_TOKEN]):
     raise ValueError("Missing required API credentials")
 
-# Channel IDs (use actual IDs instead of invite links)
-STORAGE_CHANNEL = -1002397387402  # First channel
-POST_CHANNEL = -1002176704916     # Second channel
-DUMP_CHANNEL = -1002397387402     # Using first channel as dump
+# Channel IDs from JSON dump
+STORAGE_CHANNEL = -1002397387402  # Storage channel ID from JSON
+POST_CHANNEL = -1002176704916     # Post channel
+DUMP_CHANNEL = -1002397387402     # Using storage channel as dump
 
 # Force Subscribe Channel
 FORCE_SUB_CHANNEL = "@athithan_220"
 
 # Welcome Image and Messages
-WELCOME_IMAGE = "assets/welcome.jpg"  # Local file path
+WELCOME_IMAGE = "photo_2025-04-17_14-20-26.jpg"  # Updated to your image path
 WELCOME_TEXT = """
 Welcome to FileStore Bot🌟
 Made by @athithan_220
