@@ -5,6 +5,18 @@ from services.link_generator import encode_file_id
 
 async def handle_file(client, message: Message):
     try:
+        # Verify channel access first
+        try:
+            chat = await client.get_chat(STORAGE_CHANNEL)
+            print(f"Storage channel access OK: {chat.title}")
+            
+            # Check bot permissions
+            bot_member = await client.get_chat_member(STORAGE_CHANNEL, "me")
+            print(f"Bot permissions in storage channel: {bot_member.privileges}")
+        except Exception as e:
+            print(f"Channel verification failed: {str(e)}")
+            raise Exception(f"Bot needs admin access to channels: {str(e)}")
+
         if DEBUG:
             print(f"Processing file from user {message.from_user.id}")
         
@@ -32,6 +44,11 @@ async def handle_file(client, message: Message):
             f"📩 Click the link to receive the file"
         )
         
+    except ChatAdminRequired:
+        error_msg = "Bot needs admin rights in channels"
+        print(f"Admin rights missing: {error_msg}")
+        await message.reply(error_msg)
     except Exception as e:
-        print(f"Error: {str(e)}")
-        await message.reply("❌ Failed to process file")
+        detailed_error = f"Error: {str(e)}"
+        print(detailed_error)
+        await message.reply(f"❌ Failed to process file\n{detailed_error}")
