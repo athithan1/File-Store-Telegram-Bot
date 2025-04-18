@@ -6,16 +6,20 @@ load_dotenv()
 # Get environment variables with fallback to hardcoded values
 API_ID = int(os.getenv("API_ID", "28794909"))
 API_HASH = os.getenv("API_HASH", "b876f43d34fb6213728b30225e4f9005")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "7150003784:AAEWiVw70N0DFNUgyM-B-b-mjCZrNwN-tAk")
+
+# Bot Token - Using the new token value
+BOT_TOKEN = os.getenv("BOT_TOKEN", "7855865481:AAFjxBLS6w_ZixPrGuTMW784EyMSRcq_8rA")
 
 # Validate credentials
-if not all([API_ID, API_HASH, BOT_TOKEN]):
-    raise ValueError("Missing required API credentials")
+if not all([API_ID, API_HASH, BOT_TOKEN]) or BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+    print("❌ ERROR: Please set a valid BOT_TOKEN in config.py or as an environment variable")
+    print("Get a new token from @BotFather if your current one is deactivated")
 
-# Channel IDs from JSON dump
-STORAGE_CHANNEL = -1002397387402  # Storage channel ID from JSON
-POST_CHANNEL = -1002176704916     # Post channel
-DUMP_CHANNEL = -1002397387402     # Using storage channel as dump
+# Channel IDs - Important: Telegram requires numeric IDs for channel access
+# Using the exact ID from your forwarded message
+STORAGE_CHANNEL = -1002605972463  # Storage channel ID (numeric format)
+POST_CHANNEL = -1002605972463     # Post channel (same as storage)
+DUMP_CHANNEL = -1002605972463     # Using storage channel as dump
 
 # Force Subscribe Channel
 FORCE_SUB_CHANNEL = "@athithan_220"
@@ -46,4 +50,5 @@ DEBUG = True
 
 print("Bot Configuration:")
 print(f"API_ID: {API_ID}")
+print(f"BOT_TOKEN: {BOT_TOKEN}")
 print(f"Channels: Storage={STORAGE_CHANNEL}, Post={POST_CHANNEL}")

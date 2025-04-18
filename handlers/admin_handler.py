@@ -23,7 +23,7 @@ def load_admin_config():
     default_config = {
         "admins": DEFAULT_ADMIN,
         "force_sub_channel": "@athithan_220",
-        "storage_channel": "-1002397387402",  # Updated to match the correct ID format
+        "storage_channel": -1001986592737,  # Match with config.py (numeric format)
         "welcome_image": "welcome_image.jpg",
         "welcome_caption": "👋 Hello {user_mention}!\n\nWelcome to Ragnar File Store Bot 📁\nJust send me any media or file, and I'll give you a permanent download link 🔗\n\n⚠️ Note: You must join our channel to use this bot!\n👉 @athithan_220\n\nAll Rights Reserved © @ragnarlothbrockV",
         "bulk_mode": False,
@@ -81,45 +81,41 @@ async def show_settings(client: Client, message: Message):
 
 # Admin Settings Menu
 async def show_admin_settings(client: Client, message: Message):
-    if not is_admin(message.from_user.id):
-        await message.reply("❌ Only admins can access admin settings!")
-        return
-
-    config = load_admin_config()
-    bulk_mode_status = "ON ✅" if config.get("bulk_mode", False) else "OFF ❌"
-    auto_accept_status = "ON ✅" if config.get("auto_accept", True) else "OFF ❌"
-    maintenance_status = "ON 🛠" if config.get("maintenance_mode", False) else "OFF ✅"
-
-    buttons = [
-        # File Settings
-        [InlineKeyboardButton("📂 File Settings", callback_data="file_settings")],
-        
-        # Channel Settings
-        [InlineKeyboardButton("📢 Channel Settings", callback_data="channel_settings")],
-        
-        # Bot Settings
-        [InlineKeyboardButton("⚙️ Bot Settings", callback_data="bot_settings")],
-
-        # Admin Management
-        [InlineKeyboardButton("👥 Admin Management", callback_data="admin_management")],
-        
-        # Quick toggles
-        [
-            InlineKeyboardButton(f"📦 Bulk: {bulk_mode_status}", callback_data="toggle_bulk"),
-            InlineKeyboardButton(f"🔄 Auto: {auto_accept_status}", callback_data="toggle_auto")
-        ],
-        [InlineKeyboardButton(f"🛠 Maintenance: {maintenance_status}", callback_data="toggle_maintenance")],
-        
-        # Back and Close buttons
-        [
-            InlineKeyboardButton("🔙 Back", callback_data="back_to_settings"),
-            InlineKeyboardButton("❌ Close", callback_data="close_settings")
-        ]
-    ]
-    
     try:
-        if isinstance(message, Message):
-            await message.reply(
+        user_id = message.from_user.id if hasattr(message, 'from_user') else 0
+        
+        # Only allow admin to access this
+        if not is_admin(user_id):
+            try:
+                # Try to answer callback query if it exists
+                if hasattr(message, 'callback_query'):
+                    await message.callback_query.answer("❌ Only admin can access!", show_alert=True)
+                    return
+            except:
+                pass
+            
+            # Otherwise send a reply
+            await message.reply("❌ Only admin can access!")
+            return
+            
+        config = load_admin_config()
+        bulk_mode_status = "ON ✅" if config.get("bulk_mode", False) else "OFF ❌"
+        auto_accept_status = "ON ✅" if config.get("auto_accept", True) else "OFF ❌"
+        maintenance_status = "ON 🛠" if config.get("maintenance_mode", False) else "OFF ✅"
+        
+        buttons = [
+            [InlineKeyboardButton("📂 File Settings", callback_data="file_settings")],
+            [InlineKeyboardButton("📢 Channel Settings", callback_data="channel_settings")],
+            [InlineKeyboardButton("⚙️ Bot Settings", callback_data="bot_settings")],
+            [InlineKeyboardButton("👥 Admin Management", callback_data="admin_management")],
+            [InlineKeyboardButton(f"📦 Bulk Mode: {bulk_mode_status}", callback_data="toggle_bulk")],
+            [InlineKeyboardButton("🔙 Back", callback_data="back_to_settings")],
+            [InlineKeyboardButton("❌ Close", callback_data="close_settings")]
+        ]
+        
+        # If this message is a callback query result, edit the message
+        if hasattr(message, 'edit_text'):
+            await message.edit_text(
                 "⚙️ **Admin Settings Panel**\n\n"
                 "**Current Settings:**\n"
                 f"• Bulk Mode: {bulk_mode_status}\n"
@@ -130,7 +126,7 @@ async def show_admin_settings(client: Client, message: Message):
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
         else:
-            await message.edit_text(
+            await message.reply_text(
                 "⚙️ **Admin Settings Panel**\n\n"
                 "**Current Settings:**\n"
                 f"• Bulk Mode: {bulk_mode_status}\n"
@@ -180,7 +176,8 @@ async def show_admin_management(client: Client, message: Message):
             admin_user = await client.get_users(current_admin)
             admin_info += f"• ID: `{admin_user.id}`\n"
             admin_info += f"• Name: {admin_user.first_name}\n"
-            admin_info += f"• Username: @{admin_user.username}\n"
+            if admin_user.username:
+                admin_info += f"• Username: @{admin_user.username}\n"
         except:
             admin_info += f"• ID: `{current_admin}`\n"
         
@@ -287,9 +284,14 @@ async def show_channel_settings(client: Client, message: Message):
         [InlineKeyboardButton("❌ Close", callback_data="close_settings")]
     ]
     
+    storage_channel = config.get('storage_channel', 'Not set')
+    
+    # Format the channel display
+    storage_display = str(storage_channel)
+    
     await message.edit_text(
         "📢 **Channel Settings**\n\n"
-        f"Storage Channel: {config.get('storage_channel', 'Not set')}\n"
+        f"Storage Channel: `{storage_display}`\n"
         f"Force Sub Channel: {config.get('force_sub_channel', 'Not set')}\n\n"
         "Choose a channel to modify:",
         reply_markup=InlineKeyboardMarkup(buttons)
@@ -458,7 +460,8 @@ async def handle_set_storage(client: Client, message: Message):
         if not message.text:
             await message.reply(
                 "❌ Please send the storage channel ID!\n\n"
-                "Note: Make sure the bot is admin in the channel with post permission."
+                "Note: Make sure the bot is admin in the channel with post permission.\n"
+                "Channel ID format must be: -100xxxxxxxxxx (numeric integer format)"
             )
             return
             
@@ -466,27 +469,164 @@ async def handle_set_storage(client: Client, message: Message):
         
         # Verify channel and bot's admin status
         try:
-            chat = await client.get_chat(channel_id)
-            bot_member = await client.get_chat_member(chat.id, "me")
+            # First try to get the chat with the exact ID
+            chat = None
+            try:
+                chat = await client.get_chat(channel_id)
+            except Exception as e:
+                # If that fails, try to parse the ID in different ways
+                try:
+                    # Try to convert username to ID
+                    if channel_id.startswith('@'):
+                        try:
+                            chat = await client.get_chat(channel_id)
+                        except Exception:
+                            await message.reply(
+                                "❌ Cannot get channel by username. For private channels, please use the numeric ID.\n"
+                                "To get a channel ID, forward a message from the channel to @username_to_id_bot"
+                            )
+                            return
+                    # Try different numeric formats
+                    else:
+                        # Try standard formatting
+                        numeric_formats = [
+                            channel_id,  # as provided
+                            channel_id.replace('-100', '-1001'),  # -1001 format
+                            channel_id.replace('-1001', '-100'),  # -100 format
+                            f"-100{channel_id.lstrip('-')}"  # Add -100 prefix
+                        ]
+                        
+                        for fmt in numeric_formats:
+                            try:
+                                chat = await client.get_chat(fmt)
+                                if chat:
+                                    channel_id = fmt
+                                    break
+                            except Exception:
+                                continue
+                                
+                        if not chat:
+                            raise Exception("Could not find channel with any ID format")
+                except Exception as parse_error:
+                    await message.reply(
+                        f"❌ Failed to parse channel ID: {str(parse_error)}\n\n"
+                        "Make sure the ID is in the correct format (usually -100xxxxxxxxxx)"
+                    )
+                    return
             
-            # Check permissions
-            if not bot_member.can_post_messages:
-                await message.reply("❌ Bot needs to be admin in the channel with post permission!")
+            if not chat:
+                await message.reply("❌ Could not find the channel with the provided ID")
                 return
                 
-            # Get the actual numeric ID
+            # Now check bot's permissions in the channel
+            bot_member = await client.get_chat_member(chat.id, "me")
+            
+            # Verify the bot has proper admin status
+            if bot_member.status != "administrator":
+                await message.reply(
+                    "❌ Bot is not an administrator in this channel!\n\n"
+                    "Please add the bot as an admin with these permissions:\n"
+                    "- Post Messages\n"
+                    "- Edit Messages\n"
+                    "- Delete Messages"
+                )
+                return
+            
+            # Check specific permissions
+            can_post = False
+            if hasattr(bot_member, 'privileges'):
+                privileges = bot_member.privileges
+                can_post = getattr(privileges, 'can_post_messages', False)
+            else:
+                can_post = getattr(bot_member, 'can_post_messages', False)
+                
+            if not can_post:
+                await message.reply(
+                    "❌ Bot doesn't have 'Post Messages' permission in this channel!\n\n"
+                    "Please edit the bot's admin rights in the channel and enable 'Post Messages'."
+                )
+                return
+                
+            # Test posting a message to verify permissions
+            try:
+                test_msg = await client.send_message(
+                    chat.id,
+                    "✅ Test message - Bot permissions are working correctly! You can delete this message."
+                )
+                
+                # Try to delete the message to verify delete permission
+                try:
+                    await test_msg.delete()
+                except Exception:
+                    await message.reply(
+                        "⚠️ Warning: Bot can post messages but cannot delete them.\n"
+                        "For full functionality, please enable 'Delete Messages' permission."
+                    )
+            except Exception as e:
+                await message.reply(
+                    f"❌ Bot has admin rights but cannot post messages: {str(e)}\n\n"
+                    "Please check the channel settings and make sure:\n"
+                    "1. The channel allows admin posts\n"
+                    "2. The bot's 'Post Messages' permission is enabled\n"
+                    "3. Try removing and re-adding the bot as admin"
+                )
+                return
+                
+            # Get the actual numeric ID and save it
             numeric_id = chat.id
             
-            # Save the ID as a string
+            # Save the ID as an integer (not string)
             config = load_admin_config()
-            config["storage_channel"] = str(numeric_id)
+            config["storage_channel"] = numeric_id  # Store as integer
             
             if save_admin_config(config):
+                # Update the global config
+                import sys
+                import os
+                
+                try:
+                    # Try to update config.py for permanent storage
+                    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.py")
+                    
+                    if os.path.exists(config_path):
+                        with open(config_path, "r") as f:
+                            config_content = f.read()
+                            
+                        # Replace the STORAGE_CHANNEL value
+                        import re
+                        new_content = re.sub(
+                            r'STORAGE_CHANNEL\s*=\s*-?\d+',
+                            f'STORAGE_CHANNEL = {numeric_id}',
+                            config_content
+                        )
+                        
+                        # Also replace POST_CHANNEL and DUMP_CHANNEL
+                        new_content = re.sub(
+                            r'POST_CHANNEL\s*=\s*-?\d+',
+                            f'POST_CHANNEL = {numeric_id}',
+                            new_content
+                        )
+                        
+                        new_content = re.sub(
+                            r'DUMP_CHANNEL\s*=\s*-?\d+',
+                            f'DUMP_CHANNEL = {numeric_id}',
+                            new_content
+                        )
+                        
+                        # Write the updated content
+                        with open(config_path, "w") as f:
+                            f.write(new_content)
+                            
+                except Exception as e:
+                    print(f"Warning: Couldn't update config.py: {e}")
+                
                 await message.reply(
                     f"✅ Storage channel updated successfully!\n\n"
                     f"Channel: {chat.title}\n"
                     f"ID: {numeric_id}\n\n"
-                    f"The bot has proper admin rights in this channel."
+                    f"✅ Bot has proper admin rights in this channel.\n"
+                    f"✅ Test message was sent and deleted successfully.\n\n"
+                    "You may need to restart the bot for changes to take effect."
                 )
             else:
                 await message.reply("❌ Failed to save configuration!")
@@ -497,7 +637,7 @@ async def handle_set_storage(client: Client, message: Message):
                 f"❌ Invalid channel ID or bot is not a member!\n\n"
                 f"Error: {error_message}\n\n"
                 f"Make sure:\n"
-                f"1. Channel ID is correct format: -100xxxxxxxxxx\n"
+                f"1. Channel ID is in correct format: -100xxxxxxxxxx (numeric integer)\n"
                 f"2. Bot is added to channel\n"
                 f"3. Bot is admin in channel with post permission"
             )
@@ -699,97 +839,78 @@ def is_auto_accept_enabled():
 # Completely rewritten callback handler
 @Client.on_callback_query()
 async def callback_handler(client, callback_query):
-    data = callback_query.data
-    user_id = callback_query.from_user.id
-    message = callback_query.message
-    
-    print(f"Callback received: {data} from user {user_id}")
-    
     try:
-        # Handle non-admin actions first (available to everyone)
+        data = callback_query.data
+        user_id = callback_query.from_user.id
+        
+        # Handle common callbacks first
         if data == "back_to_settings":
-            print(f"Processing back button for user {user_id}")
-            await show_settings(client, message)
+            if is_admin(user_id):
+                await show_settings(client, callback_query.message)
+            else:
+                await callback_query.answer("❌ Only admin can access!", show_alert=True)
             await callback_query.answer()
             return
             
         elif data == "close_settings":
-            print(f"Processing close button for user {user_id}")
-            await message.delete()
+            await callback_query.message.delete()
             await callback_query.answer()
             return
             
         elif data == "contact_info":
-            print(f"Processing contact info for user {user_id}")
-            await show_contact_info(client, message)
+            await show_contact_info(client, callback_query.message)
             await callback_query.answer()
             return
             
-        # Now check admin status for admin-only actions
-        user_is_admin = is_admin(user_id)
-        print(f"User {user_id} is admin: {user_is_admin}")
-        
-        # If not admin, deny access to all other actions
-        if not user_is_admin:
-            print(f"Denying access to {data} for non-admin user {user_id}")
-            await callback_query.answer("❌ Only admins can access this feature!", show_alert=True)
+        # Handle admin-only callbacks
+        elif data in ["admin_settings", "file_settings", "channel_settings", "bot_settings", 
+                     "toggle_bulk", "toggle_auto", "toggle_maintenance", "admin_management"]:
+            if is_admin(user_id):
+                if data == "admin_settings":
+                    await show_admin_settings(client, callback_query.message)
+                elif data == "file_settings":
+                    await show_file_settings(client, callback_query.message)
+                elif data == "channel_settings":
+                    await show_channel_settings(client, callback_query.message)
+                elif data == "bot_settings":
+                    await show_bot_settings(client, callback_query.message)
+                elif data == "toggle_bulk":
+                    await toggle_bulk_mode(client, callback_query)
+                elif data == "toggle_auto":
+                    await toggle_auto_accept(client, callback_query)
+                elif data == "toggle_maintenance":
+                    await toggle_maintenance(client, callback_query)
+                elif data == "admin_management":
+                    await show_admin_management(client, callback_query.message)
+                await callback_query.answer()
+            else:
+                await callback_query.answer("❌ Only admin can access!", show_alert=True)
             return
-        
-        # Handle admin-only actions
-        if data == "admin_settings":
-            await show_admin_settings(client, message)
-                
-        elif data == "file_settings":
-            await show_file_settings(client, message)
-                
-        elif data == "channel_settings":
-            await show_channel_settings(client, message)
-                
-        elif data == "bot_settings":
-            await show_bot_settings(client, message)
-                
-        elif data == "admin_management":
-            await show_admin_management(client, message)
-                
-        elif data == "toggle_bulk":
-            # Toggle bulk mode
-            config = load_admin_config()
-            config["bulk_mode"] = not config.get("bulk_mode", False)
-            save_admin_config(config)
-            # Refresh the admin settings
-            await show_admin_settings(client, message)
-            await callback_query.answer(f"Bulk mode {'enabled' if config['bulk_mode'] else 'disabled'}")
-                
-        elif data == "toggle_auto":
-            # Toggle auto accept
-            config = load_admin_config()
-            config["auto_accept"] = not config.get("auto_accept", True)
-            save_admin_config(config)
-            # Refresh the bot settings
-            await show_bot_settings(client, message)
-            await callback_query.answer(f"Auto accept {'enabled' if config['auto_accept'] else 'disabled'}")
-                
-        elif data == "toggle_maintenance":
-            # Toggle maintenance mode
-            config = load_admin_config()
-            config["maintenance_mode"] = not config.get("maintenance_mode", False)
-            save_admin_config(config)
-            # Refresh the bot settings
-            await show_bot_settings(client, message)
-            await callback_query.answer(f"Maintenance mode {'enabled' if config['maintenance_mode'] else 'disabled'}")
-                
-        elif data == "set_admin":
-            await message.reply(
-                "👥 To set a new admin:\n\n"
-                "1. Forward a message from the user you want to make admin\n"
-                "2. Reply to that forwarded message with /setadmin\n\n"
-                "⚠️ Note: The current admin will be replaced with the new admin."
-            )
-        
-        else:
-            # Handle any other admin callbacks
-            await callback_query.answer()
-                
+            
+        # Handle other settings-related callbacks
+        elif data in ["set_image", "set_caption", "set_storage", "set_force_sub", "set_file_size", "set_admin"]:
+            if is_admin(user_id):
+                if data == "set_admin":
+                    await callback_query.message.reply(
+                        "👥 **Add New Admin**\n\n"
+                        "Reply to a message from the user you want to make admin.\n\n"
+                        "⚠️ **Warning**: The current admin will be replaced!"
+                    )
+                    await callback_query.answer()
+                else:
+                    instructions = {
+                        "set_image": "📸 Please send the new welcome image (send as photo)",
+                        "set_caption": "✏️ Please send the new welcome caption text",
+                        "set_storage": "📦 Please send the storage channel ID",
+                        "set_force_sub": "🔔 Please send the force subscribe channel username (with @) or ID",
+                        "set_file_size": "📊 Please send the maximum file size in MB (1-2048)"
+                    }
+                    await callback_query.message.reply(instructions[data])
+                    await callback_query.answer()
+            else:
+                await callback_query.answer("❌ Only admin can access!", show_alert=True)
+            return
+            
     except Exception as e:
-        print(f"Error in callback handler: {str(e)}")
-        await callback_query.answer(f"❌ Error: {str(e)}", show_alert=True) 
+        print(f"Error in callback handler: {e}")
+        await callback_query.answer("❌ Error processing request", show_alert=True) 

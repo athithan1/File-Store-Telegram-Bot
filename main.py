@@ -25,7 +25,8 @@ from handlers.admin_handler import (
     handle_set_storage,
     handle_set_force_sub,
     handle_set_file_size,
-    is_maintenance_mode
+    is_maintenance_mode,
+    save_admin_config
 )
 from services.link_generator import decode_file_id
 import os
@@ -44,12 +45,12 @@ user_states = {}
 
 # Load admin config
 config = load_admin_config()
-FORCE_CHANNEL = config["force_sub_channel"]
+FORCE_SUB_CHANNEL = config["force_sub_channel"]
 
 async def check_subscription(client, user_id):
     try:
-        print(f"Checking subscription for user {user_id} in channel {FORCE_CHANNEL}")
-        member = await client.get_chat_member(FORCE_CHANNEL, user_id)
+        print(f"Checking subscription for user {user_id} in channel {FORCE_SUB_CHANNEL}")
+        member = await client.get_chat_member(FORCE_SUB_CHANNEL, user_id)
         print(f"Member status: {member.status}")
         
         if str(member.status) in ["member", "administrator", "creator", 
@@ -149,6 +150,96 @@ async def settings_command(client, message: Message):
 @app.on_message(filters.command(["adminsettings"]))
 async def admin_settings_command(client, message: Message):
     await show_admin_settings(client, message)
+
+@app.on_message(filters.command(["contactus"]))
+async def contact_command(client, message: Message):
+    await show_contact_info(client, message)
+
+@app.on_message(filters.command("setchannel") & filters.private)
+async def set_channel_command(client, message: Message):
+    user_id = message.from_user.id
+    
+    # Check if user is admin
+    if not is_admin(user_id):
+        await message.reply("❌ Only admins can use this command!")
+        return
+        
+    # Check if command has channel ID parameter
+    command_parts = message.text.split()
+    if len(command_parts) > 1:
+        channel_id = command_parts[1].strip()
+        
+        # Try to process the channel ID
+        try:
+            # Try to convert to integer (should be a numeric ID)
+            if channel_id.startswith('-100'):
+                # Already in proper format
+                pass
+            elif channel_id.startswith('@'):
+                await message.reply(
+                    "⚠️ Please provide a channel ID, not a username.\n\n"
+                    "To get a channel ID:\n"
+                    "1. Forward a message from your channel to @username_to_id_bot\n"
+                    "2. Use the channel ID that starts with -100..."
+                )
+                return
+                
+            # Verify the channel
+            try:
+                # Try to get the channel
+                chat = await client.get_chat(channel_id)
+                
+                # Check if bot is member and admin
+                bot_member = await client.get_chat_member(chat.id, "me")
+                
+                if not bot_member.can_post_messages:
+                    await message.reply(
+                        f"❌ Bot is not an admin in the channel '{chat.title}'!\n\n"
+                        f"Please make the bot an admin with post messages permission."
+                    )
+                    return
+                    
+                # Channel verified, update config
+                config = load_admin_config()
+                config["storage_channel"] = int(chat.id)  # Save as integer
+                
+                if save_admin_config(config):
+                    await message.reply(
+                        f"✅ Storage channel updated successfully!\n\n"
+                        f"Channel: {chat.title}\n"
+                        f"ID: {chat.id}\n\n"
+                        f"Bot has proper admin rights in this channel."
+                    )
+                else:
+                    await message.reply("❌ Failed to save configuration!")
+                
+            except Exception as e:
+                await message.reply(
+                    f"❌ Failed to set channel: {str(e)}\n\n"
+                    f"Make sure:\n"
+                    f"1. The channel ID is correct\n"
+                    f"2. The bot is a member of the channel\n"
+                    f"3. The bot is an admin in the channel"
+                )
+                
+        except Exception as e:
+            await message.reply(
+                f"❌ Invalid channel ID format: {str(e)}\n\n"
+                f"Channel ID should be a numeric ID like: -100xxxxxxxxxx"
+            )
+    else:
+        # No channel ID provided - show instructions
+        current_config = load_admin_config()
+        current_channel = current_config.get("storage_channel", "Not set")
+        
+        await message.reply(
+            f"ℹ️ Current storage channel: `{current_channel}`\n\n"
+            f"To set a new storage channel, use:\n"
+            f"`/setchannel -100xxxxxxxxxx`\n\n"
+            f"To get a channel ID:\n"
+            f"1. Forward a message from your channel to @username_to_id_bot\n"
+            f"2. Use the channel ID that starts with -100..."
+        )
 
 # Callback handlers
 @app.on_callback_query(filters.regex("^(check_sub|already_joined|set_image|set_caption|toggle_bulk|close_settings|contact_info|about|admin_settings|back_to_settings|file_settings|channel_settings|bot_settings|toggle_auto|toggle_maintenance|set_storage|set_force_sub|set_file_size)$"))
@@ -347,16 +438,107 @@ async def handle_settings_input(client, message: Message):
             await handlers[state](client, message)
             user_states.pop(user_id)  # Clear the state after handling
 
-async def main():
-    async with app:
-        print("Bot is starting...")
+# Verify channel access at startup
+async def verify_channels(app):
+    try:
+        # Verify storage channel
+        print(f"Verifying storage channel: {STORAGE_CHANNEL}")
         try:
-            print("Bot started successfully!")
-            print("Bot is running... Press Ctrl+C to stop")
-            await idle()
+            storage_chat = await app.get_chat(STORAGE_CHANNEL)
+            storage_member = await app.get_chat_member(STORAGE_CHANNEL, "me")
+            
+            print(f"✅ Storage channel confirmed: {storage_chat.title}")
+            print(f"Bot permissions: {storage_member.status}")
+            
+            if not storage_member.can_post_messages:
+                print(f"WARNING: Bot doesn't have post permission in storage channel: {storage_chat.title}")
+            else:
+                print(f"✅ Storage channel access OK: {storage_chat.title}")
         except Exception as e:
-            print(f"Error during startup: {str(e)}")
-            raise e
+            print(f"❌ CRITICAL: Storage channel access failed: {str(e)}")
+            print(f"Please make sure the bot is a member and admin of the storage channel ID: {STORAGE_CHANNEL}")
+            print("Without storage channel access, file uploads will not work!")
+        
+        # Verify post channel if different
+        if POST_CHANNEL != STORAGE_CHANNEL:
+            try:
+                post_chat = await app.get_chat(POST_CHANNEL)
+                post_member = await app.get_chat_member(POST_CHANNEL, "me")
+                
+                if not post_member.can_post_messages:
+                    print(f"WARNING: Bot doesn't have post permission in post channel: {post_chat.title}")
+                else:
+                    print(f"✅ Post channel access OK: {post_chat.title}")
+            except Exception as e:
+                print(f"❌ ERROR: Post channel access failed: {str(e)}")
+    
+        # Verify force subscribe channel
+        if FORCE_SUB_CHANNEL:
+            try:
+                force_chat = await app.get_chat(FORCE_SUB_CHANNEL)
+                force_member = await app.get_chat_member(FORCE_SUB_CHANNEL, "me")
+                
+                if not force_member.can_post_messages:
+                    print(f"WARNING: Bot doesn't have post permission in force subscribe channel: {force_chat.title}")
+                else:
+                    print(f"✅ Force subscribe channel access OK: {force_chat.title}")
+            except Exception as e:
+                print(f"⚠️ Could not verify force subscribe channel: {e}")
+                print("Users may not be able to subscribe to use the bot!")
+        
+    except Exception as e:
+        print(f"ERROR verifying channels: {e}")
+        print("Make sure the bot is an admin in all channels with post permission.")
 
+# Main program
 if __name__ == "__main__":
-    app.run(main())
+    # First check if bot token is valid
+    if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+        print("❌ CRITICAL ERROR: Bot token not set!")
+        print("Please update your bot token in config.py or set the BOT_TOKEN environment variable")
+        print("To get a new bot token:")
+        print("1. Go to @BotFather on Telegram")
+        print("2. Send /newbot and follow the instructions")
+        print("3. Copy the bot token and update config.py")
+        exit(1)
+        
+    try:
+        # Start bot
+        print("Starting bot...")
+        app.start()
+        
+        # Verify channels
+        print("Verifying channel access...")
+        app.loop.create_task(verify_channels(app))
+        
+        # Run bot until stopped
+        print("Bot is running!")
+        idle()
+    except ValueError as e:
+        if "bot token" in str(e).lower():
+            print("❌ ERROR: Invalid bot token. Please get a new token from @BotFather")
+            print(f"Details: {str(e)}")
+        else:
+            print(f"❌ ERROR: {str(e)}")
+    except ConnectionError as e:
+        print("❌ ERROR: Connection error - Failed to connect to Telegram servers")
+        print(f"Details: {str(e)}")
+        print("This may be due to an invalid bot token or network issues")
+    except Exception as e:
+        print(f"❌ ERROR starting bot: {str(e)}")
+        print(f"Error type: {type(e).__name__}")
+        
+        if "USER_DEACTIVATED" in str(e):
+            print("\n❌ CRITICAL: Your bot has been deactivated!")
+            print("You need to get a new bot token from @BotFather")
+            print("1. Go to @BotFather on Telegram")
+            print("2. Send /newbot and follow the instructions")
+            print("3. Copy the new token and update config.py")
+    finally:
+        try:
+            app.stop()
+        except Exception as e:
+            # This might fail if the app never started properly
+            print(f"Note: Could not properly stop the bot: {str(e)}")
+            pass
+        print("Bot has been stopped.")
