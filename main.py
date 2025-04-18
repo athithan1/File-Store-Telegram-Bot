@@ -117,7 +117,7 @@ async def start_command(client, message: Message):
                     user_requests.pop(user_id, None)
                     return
                 else:
-                    await message.reply("❌ Sorry, couldn't find the requested file.")
+                    await message.reply("✅ Thanks For Using Me Bro!.")
                     return
             
             buttons = [[InlineKeyboardButton("✅ Already Joined", callback_data="already_joined")]]
