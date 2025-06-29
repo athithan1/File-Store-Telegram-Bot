@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Get environment variables with fallback to hardcoded values
-API_ID = int(os.getenv("API_ID", "28794909"))
-API_HASH = os.getenv("API_HASH", "b876f43d34fb6213728b30225e4f9005")
+API_ID = int(os.getenv("API_ID", " "))
+API_HASH = os.getenv("API_HASH", " ")
 
 # Bot Token - Using the new token value
-BOT_TOKEN = os.getenv("BOT_TOKEN", "7855865481:AAFjxBLS6w_ZixPrGuTMW784EyMSRcq_8rA")
+BOT_TOKEN = os.getenv("BOT_TOKEN", " ")
 
 # Validate credentials
 if not all([API_ID, API_HASH, BOT_TOKEN]) or BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
